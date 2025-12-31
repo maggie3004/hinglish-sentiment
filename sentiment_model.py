@@ -27,7 +27,6 @@ model.eval()
 
 LABELS = ["Negative", "Neutral", "Positive"]
 
-
 def predict_sentiment(clean_text, original_text):
     inputs = tokenizer(
         clean_text,
@@ -38,29 +37,53 @@ def predict_sentiment(clean_text, original_text):
 
     with torch.no_grad():
         outputs = model(**inputs)
-        probs = F.softmax(outputs.logits, dim=1)[0]
+        probs = F.softmax(outputs.logits, dim=1)[0].tolist()
 
-    pred_idx = torch.argmax(probs).item()
-    sentiment = LABELS[pred_idx]
-    confidence = probs[pred_idx].item()
+    # Base model scores
+    score_map = {
+        "Negative": probs[0],
+        "Neutral": probs[1],
+        "Positive": probs[2]
+    }
 
-    # -------- Emoji logic --------
+    # Linguistic signals
     emoji_score = emoji_sentiment_score(original_text)
-    if emoji_score >= 1 and sentiment != "Negative":
-        sentiment = "Positive"
-    elif emoji_score <= -1:
-        sentiment = "Negative"
+    has_negation = detect_negation(original_text)
+    has_sarcasm = detect_sarcasm(original_text)
 
-    # -------- Sarcasm --------
-    if detect_sarcasm(original_text) and sentiment == "Positive":
-        sentiment = "Negative"
+    # ---------- Heuristic adjustments ----------
+    if emoji_score <= -1:
+        score_map["Negative"] += 0.25
+        score_map["Positive"] -= 0.15
 
-    # -------- Negation merged with Negative --------
-    if detect_negation(original_text):
-        sentiment = "Negative"
+    if emoji_score >= 1:
+        score_map["Positive"] += 0.25
+        score_map["Negative"] -= 0.15
 
-    # -------- Short neutral text --------
-    if sentiment == "Positive" and emoji_score == 0 and len(clean_text.split()) <= 2:
-        sentiment = "Neutral"
+    if has_negation:
+        score_map["Negative"] += 0.20
+        score_map["Positive"] -= 0.10
 
-    return sentiment, confidence, probs.tolist()
+    if has_sarcasm:
+        score_map["Negative"] += 0.20
+        score_map["Positive"] -= 0.10
+
+    # ---------- Normalize ----------
+    for k in score_map:
+        score_map[k] = max(score_map[k], 0.0)
+
+    total = sum(score_map.values())
+    for k in score_map:
+        score_map[k] /= total
+
+    # Final decision
+    sentiment = max(score_map, key=score_map.get)
+    confidence = score_map[sentiment]
+
+    probs_final = [
+        score_map["Negative"],
+        score_map["Neutral"],
+        score_map["Positive"]
+    ]
+
+    return sentiment, confidence, probs_final

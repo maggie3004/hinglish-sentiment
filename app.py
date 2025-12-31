@@ -88,7 +88,6 @@ with c3:
     if st.button("Neutral"):
         st.session_state.example = "movie theek tha"
 
-
 # ---------------- INPUT ----------------
 tweet = st.text_input(
     "Enter Hinglish Tweet",
@@ -108,13 +107,26 @@ if st.button("Analyze"):
         st.warning("Please enter a tweet")
     else:
         cleaned = clean_tweet(tweet)
-        sentiment = predict_sentiment(cleaned, tweet)
+        sentiment, confidence_model, probs = predict_sentiment(cleaned, tweet)
 
         # Save history
         st.session_state.history.append((tweet, sentiment))
 
         # Sentiment result
         sentiment_card(sentiment)
+
+        # -------- SENTIMENT SCORES (ADDED) --------
+        scores_df = pd.DataFrame({
+            "Sentiment": ["Negative", "Neutral", "Positive"],
+            "Score": [
+                round(probs[0], 4),
+                round(probs[1], 4),
+                round(probs[2], 4)
+            ]
+        })
+
+        st.subheader("Sentiment Scores")
+        st.table(scores_df)
 
         # Emoji signal
         emoji_score = emoji_sentiment_score(tweet)
