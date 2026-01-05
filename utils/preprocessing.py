@@ -17,6 +17,10 @@ NEGATIVE_EMOJIS = [
     "☹️", "😕"
 ]
 
+NEUTRAL_EMOJIS = [
+    "😐", "😑", "😶", "😶‍🌫️"
+]
+
 
 NEGATION_WORDS = [
     # Hindi / Hinglish
@@ -41,6 +45,10 @@ NEGATION_WORDS = [
     "pasand nahi"
 ]
 
+NEUTRAL_PHRASES = [
+    "theek tha", "thik tha", "ok tha",
+    "average tha", "chal raha tha"
+]
 
 def clean_tweet(text):
     """
@@ -55,13 +63,21 @@ def clean_tweet(text):
 
 def emoji_sentiment_score(text):
     score = 0
+
     for e in POSITIVE_EMOJIS:
         if e in text:
             score += 1
+
     for e in NEGATIVE_EMOJIS:
         if e in text:
             score -= 1
+
+    for e in NEUTRAL_EMOJIS:
+        if e in text:
+            return 0   # Force neutral signal
+
     return score
+
 
 def detect_sarcasm(text):
     text = text.lower()
@@ -71,7 +87,9 @@ def detect_sarcasm(text):
 def detect_negation(text):
     text = text.lower()
     for neg in NEGATION_WORDS:
-        if neg in text:
+        pattern = r"\b" + re.escape(neg) + r"\b"
+        if re.search(pattern, text):
             return True
     return False
+
 

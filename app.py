@@ -86,7 +86,7 @@ with c2:
 
 with c3:
     if st.button("Neutral"):
-        st.session_state.example = "movie theek tha"
+        st.session_state.example = "movie theek tha 😐"
 
 # ---------------- INPUT ----------------
 tweet = st.text_input(
